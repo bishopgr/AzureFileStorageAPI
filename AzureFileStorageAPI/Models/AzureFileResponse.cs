@@ -1,0 +1,16 @@
+﻿namespace AzureFileStorage.API.Models
+{
+    public class AzureFileResponse : FileResponse
+    {
+      
+        public AzureFileResponse(string response)
+        {
+            Response = response;
+        }
+
+        public AzureFileResponse(ErrorResponse errorResponse)
+        {
+            ErrorResponse = errorResponse;
+        }
+    }
+}
