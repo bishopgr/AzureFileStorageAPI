@@ -1,15 +1,14 @@
 ﻿using AzureFileStorage.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureFileStorage.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UploadController : ControllerBase
     {
         private readonly AzureBlobStorageProvider _azureBlobStorageProvider;
@@ -22,6 +21,7 @@ namespace AzureFileStorage.API.Controllers
         public async Task<IActionResult> Upload(IFormFile file)
         {
             var upload = await _azureBlobStorageProvider.UploadFileAsync(file);
+
             if(upload is ErrorResponse)
             {
                 return BadRequest(upload.Response);
