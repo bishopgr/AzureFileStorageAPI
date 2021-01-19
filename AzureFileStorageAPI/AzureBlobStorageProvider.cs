@@ -62,7 +62,7 @@ namespace AzureFileStorage.API
             }
             catch(Exception e)
             {
-                return new AzureFileResponse(new ErrorResponse($"The upload for {file.FileName} failed. {e.Message}"));
+                return new ErrorResponse(e.Message);
             }
 
             return new AzureFileResponse($"Nothing was uploaded.");

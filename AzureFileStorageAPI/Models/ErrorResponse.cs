@@ -5,15 +5,13 @@ using System.Threading.Tasks;
 
 namespace AzureFileStorage.API.Models
 {
-    public class ErrorResponse
+    public class ErrorResponse : FileResponse
     {
-        public string Message { get; set; }
-
         public DateTime TimeStamp => DateTime.Now;
 
-        public ErrorResponse(string message)
+        public ErrorResponse(string response)
         {
-            Message = message;
+            Response = response;
         }
     }
 }
