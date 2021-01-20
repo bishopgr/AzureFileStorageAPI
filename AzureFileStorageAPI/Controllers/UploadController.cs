@@ -2,13 +2,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AzureFileStorage.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class UploadController : ControllerBase
     {
         private readonly AzureBlobStorageProvider _azureBlobStorageProvider;
@@ -28,6 +29,20 @@ namespace AzureFileStorage.API.Controllers
             }
 
             return Ok(upload);
+        }
+
+        [HttpPost("uploadmany")]
+        public async Task<IActionResult> UploadMany(IFormFile[] files)
+        {
+            var uploads = await _azureBlobStorageProvider.UploadManyAsync(files);
+            
+
+            if(uploads is IEnumerable<ErrorResponse>)
+            {
+                return BadRequest(uploads);
+            }
+
+            return Ok(uploads);
         }
     }
 }
