@@ -19,14 +19,13 @@ namespace AzureFileStorage.API
         private readonly CloudBlobContainer _cloudBlobContainer;
         public AzureBlobStorageProvider(IAzureConnectionSettings azureConnectionSettings)
         {
+
             _cloudStorageAccount = CloudStorageAccount.Parse(azureConnectionSettings.ConnectionString);
             _cloudBlobClient = _cloudStorageAccount.CreateCloudBlobClient();
-            _cloudBlobContainer = _cloudBlobClient.GetContainerReference(Randomize("uploader"));
-
-
+            _cloudBlobContainer = _cloudBlobClient.GetContainerReference("uploads");
         }
 
-        public string Randomize(string prefix = "sample") =>
+        public string Randomize(string prefix = "Item") =>
             $"{prefix}-{Guid.NewGuid()}";
 
         public async Task DeleteBlobData(string fileUrl)
@@ -48,16 +47,14 @@ namespace AzureFileStorage.API
                     await _cloudBlobContainer.SetPermissionsAsync(new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Blob });
                 }
 
-                if (file != null)
+                if (file is not null)
                 {
-                    var blockBlob = await ProcessUpload(file);
-
-                    return new AzureFileResponse(blockBlob.Uri.AbsoluteUri);
+                    return await ProcessUpload(file);
                 }
             }
             catch(Exception e)
             {
-                return new ErrorResponse(e.Message);
+                return new ErrorResponse($"The file upload of {file.FileName} failed. Additional info: {e.Message}");
             }
 
             return new AzureFileResponse($"Nothing was uploaded.");
@@ -66,35 +63,10 @@ namespace AzureFileStorage.API
 
         public async Task<List<FileResponse>> UploadManyAsync(IFormFile[] files)
         {
-            var fileResponses = new List<FileResponse>(files.Length);
-            try
-            {
-                if (await _cloudBlobContainer.CreateIfNotExistsAsync())
-                {
-                    await _cloudBlobContainer.SetPermissionsAsync(new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Blob });
-                }
-
-                if (files?.Length > 0)
-                {
-                    using var ms = new MemoryStream();
-
-                    foreach (var file in files)
-                    {
-                        var response = await ProcessUpload(file);
-                        fileResponses.Add(new AzureFileResponse(response.Uri.AbsoluteUri));
-                    }
-
-                    return fileResponses;
-                }
-            }
-            catch(Exception e)
-            {
-                fileResponses.Add(new ErrorResponse($"The {files.Length} files you attempted to upload failed. More info: {e?.Message}"));
-            }
-            return new List<FileResponse>();
+            return await ProcessUploadMany(files);
         }
 
-        private async Task<CloudBlockBlob> ProcessUpload(IFormFile file)
+        private async Task<AzureFileResponse> ProcessUpload(IFormFile file)
         {
             using var ms = new MemoryStream();
             await file.CopyToAsync(ms);
@@ -103,12 +75,42 @@ namespace AzureFileStorage.API
             blockBlob.Properties.ContentType = file.ContentType;
             await blockBlob.UploadFromByteArrayAsync(fileBytes, 0, fileBytes.Length);
 
-            return blockBlob;
+            return new AzureFileResponse(blockBlob.Uri.AbsoluteUri);
         }
 
+        private async Task<List<FileResponse>> ProcessUploadMany(IFormFile[] files)
+        {
+            List<FileResponse> fileResponses = new();
 
+            try
+            {
+                if (await _cloudBlobContainer.CreateIfNotExistsAsync())
+                {
+                    await _cloudBlobContainer.SetPermissionsAsync(new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Blob });
+                }
 
+                using var ms = new MemoryStream();
 
+                foreach (var file in files)
+                {
+                    await file.CopyToAsync(ms);
+
+                    var fileBytes = ms.ToArray();
+                    var blockBlob = _cloudBlobContainer.GetBlockBlobReference(file.FileName);
+
+                    blockBlob.Properties.ContentType = file.ContentType;
+                    await blockBlob.UploadFromByteArrayAsync(fileBytes, 0, fileBytes.Length);
+                    fileResponses.Add(new AzureFileResponse(blockBlob.Uri.AbsoluteUri));
+                    
+                }
+                return fileResponses;
+            }
+            catch (Exception e)
+            {
+                fileResponses.Add(new ErrorResponse($"The {files.Length} files you attempted to upload failed. More info: {e?.Message}"));
+                return fileResponses;
+            }
+        }
 
     }
 }

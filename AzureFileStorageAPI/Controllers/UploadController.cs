@@ -23,24 +23,17 @@ namespace AzureFileStorage.API.Controllers
         {
             var upload = await _azureBlobStorageProvider.UploadFileAsync(file);
 
-            if(upload is ErrorResponse)
+            return upload switch
             {
-                return BadRequest(upload.Response);
-            }
-
-            return Ok(upload);
+                ErrorResponse => BadRequest(upload.Response), // If upload is of type ErrorResponse, return a BadRequest with the response
+                _ => Ok(upload) // If all is well, return the upload data.
+            };
         }
 
         [HttpPost("uploadmany")]
         public async Task<IActionResult> UploadMany(IFormFile[] files)
         {
             var uploads = await _azureBlobStorageProvider.UploadManyAsync(files);
-            
-
-            if(uploads is IEnumerable<ErrorResponse>)
-            {
-                return BadRequest(uploads);
-            }
 
             return Ok(uploads);
         }
